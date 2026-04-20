@@ -1024,8 +1024,8 @@ class DetailDialog:
         with ui.column().classes("gap-1"):
             ui.label(label).classes("text-caption text-grey-6")
             if color:
-                # Usar text-color prop para Quasar/NiceGUI
-                ui.label(str(value)).props(f"text-color={color}")
+                # Usar clase CSS de Quasar para color de texto
+                ui.label(str(value)).classes(f"text-{color} text-body1 font-medium")
             else:
                 ui.label(str(value)).classes("text-body1 font-medium")
 
