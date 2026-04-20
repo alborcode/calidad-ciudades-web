@@ -1024,18 +1024,8 @@ class DetailDialog:
         with ui.column().classes("gap-1"):
             ui.label(label).classes("text-caption text-grey-6")
             if color:
-                # token_to_quasar_color puede adaptarse en el futuro; por ahora pasamos token directo
-                try:
-                    from app.utils.visuals import token_to_quasar_color
-
-                    color_token = token_to_quasar_color(color)
-                except Exception:
-                    color_token = color
-
-                if color_token:
-                    ui.label(str(value)).props(f"color={color_token}")
-                else:
-                    ui.label(str(value)).classes("text-body1 font-medium")
+                # Usar text-color prop para Quasar/NiceGUI
+                ui.label(str(value)).props(f"text-color={color}")
             else:
                 ui.label(str(value)).classes("text-body1 font-medium")
 
