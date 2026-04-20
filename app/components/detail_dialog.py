@@ -436,12 +436,14 @@ class DetailDialog:
         precipit = clima.get("precipitaciones")
         viento = clima.get("viento")
 
-        # Color para viento: si es >25% mayor que la media → rojo
+        # Color para viento: si es >15% mayor → rojo, si es >media pero ≤15% → naranja, si ≤media → sin color
         def get_viento_color(local_val, national_val):
             if local_val is None or national_val is None or national_val == 0:
                 return None
-            if local_val > national_val * 1.25:
+            if local_val > national_val * 1.15:
                 return "red-7"
+            elif local_val > national_val:
+                return "orange-7"
             return None
 
         viento_color = get_viento_color(viento, viento_nac)
