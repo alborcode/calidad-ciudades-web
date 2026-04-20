@@ -425,35 +425,57 @@ class DetailDialog:
         if not clima:
             return
 
+        # Obtener medias nacionales
+        medias = datos.get("medias_nacionales", {})
+        temp_nac = medias.get("temperatura_media", None)
+        precipit_nac = medias.get("precipitacion_media", None)
+
+        # Obtener valores locales
+        temp_med = clima.get("temperatura_media")
+        precipit = clima.get("precipitaciones")
+        viento = clima.get("viento")
+
+        # Función para color de temperatura
+        def get_temp_color(local_val, national_val):
+            if local_val is None or national_val is None:
+                return None
+            diff = local_val - national_val
+            if diff >= 5:
+                return "red-7"  # Mucho más cálido
+            elif diff <= -5:
+                return "blue-7"  # Mucho más frío
+            else:
+                return "green-7"  # Dentro de ±4.9°C
+
+        # Función para color de precipitaciones
+        def get_precipit_color(local_val, national_val):
+            if local_val is None or national_val is None or national_val == 0:
+                return None
+            ratio = local_val / national_val
+            if ratio > 1.25:
+                return "blue-7"  # >25% más lluvias
+            elif ratio > 1.10:
+                return "cyan-4"  # 10-25% más lluvias
+            elif ratio < 0.75:
+                return "red-7"  # >25% menos lluvias
+            elif ratio < 0.90:
+                return "orange-7"  # 10-25% menos lluvias
+            else:
+                return "green-7"  # Dentro de ±10%
+
+        temp_color = get_temp_color(temp_med, temp_nac)
+        precipit_color = get_precipit_color(precipit, precipit_nac)
+
         with ui.card().classes("w-full mb-4"):
             with ui.row().classes("items-center gap-2"):
                 ui.icon("wb_sunny")
                 ui.label("Clima").classes("text-h6 font-medium")
 
             with ui.grid(columns=3).classes("w-full gap-3"):
-                temp_med = clima.get("temperatura_media")
-                precipit = clima.get("precipitaciones")
-                viento = clima.get("viento")
-
-                # Para clima: por defecto no coloreamos temperatura (neutral),
-                # para precipitaciones y viento consideramos que menos es mejor.
-                from app.utils.visuals import compare_to_national
-                medias = datos.get("medias_nacionales", {})
-                temp_nac = medias.get("temperatura_media", None)
-                precipit_nac = medias.get("precipitaciones_media", None)
-                viento_nac = medias.get("viento_media", None)
-
-                temp_color = None
-                precipit_color = compare_to_national(
-                    precipit, precipit_nac, better_when_higher=False, thresholds=(0.9, 1.1)
-                )
-                viento_color = compare_to_national(
-                    viento, viento_nac, better_when_higher=False, thresholds=(0.9, 1.1)
-                )
-
                 self._add_info_item("Temp. media", f"{temp_med:.1f}°C" if temp_med is not None else "N/A", color=temp_color)
                 self._add_info_item("Precipit.", f"{precipit:.0f}mm" if precipit is not None else "N/A", color=precipit_color)
-                self._add_info_item("Viento", f"{viento:.1f}km/h" if viento is not None else "N/A", color=viento_color)
+                # Viento: mostrar valor sin color especial
+                self._add_info_item("Viento", f"{viento:.1f}km/h" if viento is not None else "N/A", color=None)
 
     def _build_paro_section(self, datos: dict):
         """Construye la sección de desempleo."""
