@@ -354,41 +354,69 @@ class DetailDialog:
         if not viv:
             return
 
+        # Obtener medias nacionales
+        medias = datos.get("medias_nacionales", {})
+        precio_m2_nac = medias.get("precio_m2", None)
+        superficie_nac = medias.get("superficie_media_m2", None)
+        pct_turistica_nac = medias.get("VIVIENDA_TURISTICA_PORCENTAJE", None)
+
+        # Calcular precio alquiler medio nacional: precio_m2 * superficie_media
+        precio_alq_nac = None
+        if precio_m2_nac is not None and superficie_nac is not None:
+            precio_alq_nac = precio_m2_nac * superficie_nac
+
+        # Obtener valores locales
+        precio_alq = viv.get("precio_alquiler")
+        precio_m2 = viv.get("precio_m2")
+        superficie = viv.get("superficie_media_m2")
+        pct_turistica = viv.get("porcentaje_viviendas_turisticas")
+
+        # Función auxiliar para determinar color según comparación
+        def get_color_comparison(local_val, national_val, invert=False):
+            """Retorna color: rojo si mayor, naranja si igual, verde si menor."""
+            if local_val is None or national_val is None or national_val == 0:
+                return None
+            if local_val > national_val:
+                return "red-7" if not invert else "green-9"
+            elif local_val < national_val:
+                return "green-9" if not invert else "red-7"
+            else:
+                return "orange-7"
+
         with ui.card().classes("w-full mb-4"):
             ui.label("Vivienda").classes("text-h6 font-medium mb-3")
 
             with ui.grid(columns=2).classes("w-full gap-4"):
-                # Precio alquiler medio con 2 decimales
-                precio = viv.get("precio_alquiler")
-                # Aplicar color a precio alquiler comparando con media nacional si está disponible
-                from app.utils.visuals import compare_to_national
-                medias = datos.get("medias_nacionales", {})
-                precio_nac = medias.get("precio_alquiler_medio", None)
-
-                precio_color = compare_to_national(
-                    precio, precio_nac, better_when_higher=False, thresholds=(0.9, 1.1)
-                )
-
+                # Precio Alquiler medio
+                precio_color = get_color_comparison(precio_alq, precio_alq_nac)
                 self._add_info_item(
                     "Precio Alquiler medio",
-                    f"{precio:.2f} €/mes" if precio is not None else "N/A",
+                    f"{precio_alq:.2f} €/mes" if precio_alq is not None else "N/A",
                     color=precio_color,
                 )
+
+                # Precio m²
+                precio_m2_color = get_color_comparison(precio_m2, precio_m2_nac)
                 self._add_info_item(
                     "Precio m²",
-                    f"{viv.get('precio_m2', 'N/A')} €/m²"
-                    if viv.get("precio_m2")
-                    else "N/A",
+                    f"{precio_m2:.2f} €/m²" if precio_m2 is not None else "N/A",
+                    color=precio_m2_color,
                 )
+
+                # Superficie media (invertido: mayor es mejor)
+                superficie_color = get_color_comparison(superficie, superficie_nac, invert=True)
                 self._add_info_item(
                     "Superficie media",
-                    f"{viv.get('superficie_media_m2', 'N/A')} m²"
-                    if viv.get("superficie_media_m2")
-                    else "N/A",
+                    f"{superficie:.1f} m²" if superficie is not None else "N/A",
+                    color=superficie_color,
                 )
+
+                # % Viviendas turísticas
+                turistica_color = get_color_comparison(pct_turistica, pct_turistica_nac)
                 self._add_info_item(
                     "Viviendas turísticas",
-                    f"{viv.get('porcentaje_viviendas_turisticas', 'N/A')}%",
+                    f"{pct_turistica:.2f}%" if pct_turistica is not None else "N/A",
+                    color=turistica_color,
                 )
 
     def _build_clima_section(self, datos: dict):
