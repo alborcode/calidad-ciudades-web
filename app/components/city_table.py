@@ -6,7 +6,11 @@ Incluye círculo de puntuación y click para ver detalle.
 
 from nicegui import ui
 from typing import Callable
-from app.database import CiudadResultado
+from app.database import (
+    CiudadResultado,
+    calcular_puntuacion_100,
+    get_categoria_from_score,
+)
 from app.components.score_circle import crear_circulo_puntuacion, crear_badge_categoria
 
 
@@ -46,12 +50,14 @@ class CityTableComponent:
 
     def _crear_row(self, ciudad: CiudadResultado):
         """Crea una fila de resultado."""
+        # Calcular categoría basada en puntuación 100 (nueva escala 28=100)
+        puntuacion_100 = calcular_puntuacion_100(ciudad.puntuacion)
+        categoria = get_categoria_from_score(puntuacion_100)
+
         with ui.card().tight().classes("w-full mb-2 p-3"):
             with ui.row().classes("w-full items-center gap-4"):
                 # Círculo de puntuación
-                crear_circulo_puntuacion(
-                    ciudad.puntuacion, ciudad.categoria, tamano="50px"
-                )
+                crear_circulo_puntuacion(ciudad.puntuacion, categoria, tamano="50px")
 
                 # Info de la ciudad
                 with ui.column().classes("flex-grow"):
@@ -61,8 +67,8 @@ class CityTableComponent:
                         ui.label("•").classes("text-grey-5")
                         ui.label(ciudad.comunidad).classes("text-body2 text-grey-7")
 
-                # Badge de categoría
-                crear_badge_categoria(ciudad.categoria)
+                # Badge de categoría (calculada dinámicamente)
+                crear_badge_categoria(categoria)
 
                 # Botón ver detalle
                 ui.button(

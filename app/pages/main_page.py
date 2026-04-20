@@ -18,6 +18,7 @@ class MainPage:
         self.tabla: CityTableComponent = None
         self.dialogo_detalle: DetailDialog = None
         self._resultados_label: ui.label = None
+        self.localidad_origen: dict | None = None
 
     def on_row_click(self, localidad_id: int):
         """Handler para click en fila de ciudad. Abre el diálogo de detalle."""
@@ -60,3 +61,6 @@ class MainPage:
 
         # Cargar datos iniciales
         self.on_filter_change()
+
+        # Pasar getter de localidad origen al diálogo de detalle para cálculo de distancias
+        self.dialogo_detalle.set_origen_getter(lambda: self.filtros.localidad_fijada)

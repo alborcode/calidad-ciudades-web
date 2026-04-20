@@ -12,9 +12,10 @@ from dataclasses import dataclass
 # Ruta a la base de datos
 DB_PATH = Path(__file__).parent.parent / "data" / "calidad_ciudades.db"
 
-# Rango de puntuación en la BD (mínimo y máximo real)
-SCORE_MIN = -2
-SCORE_MAX = 18
+# Rango de puntuación en la BD (mínimo/máximo teórico ahora -11 .. 31)
+# Según la nueva definición: mínimo teórico = -11, máximo teórico = 31
+SCORE_MIN = -9   # Mínimo teórico
+SCORE_MAX = 33   # Máximo teórico
 
 
 @dataclass
@@ -188,8 +189,62 @@ def get_datos_localidad(localidad_id: int) -> dict[str, Any]:
     if row:
         datos["cultura"] = dict(row)
 
+    # Administración ( AGE - Administración General del Estado )
+    cursor.execute("SELECT * FROM administracion_age WHERE localidad_id = ?", (localidad_id,))
+    row = cursor.fetchone()
+    if row:
+        datos["administracion"] = dict(row)
+
+    # Clima
+    cursor.execute("SELECT * FROM clima WHERE localidad_id = ?", (localidad_id,))
+    row = cursor.fetchone()
+    if row:
+        datos["clima"] = dict(row)
+
+    # Paro
+    cursor.execute("SELECT * FROM paro WHERE localidad_id = ?", (localidad_id,))
+    row = cursor.fetchone()
+    if row:
+        datos["paro"] = dict(row)
+
+    # Renta
+    cursor.execute("SELECT * FROM renta WHERE localidad_id = ?", (localidad_id,))
+    row = cursor.fetchone()
+    if row:
+        datos["renta"] = dict(row)
+
+    # Delitos
+    cursor.execute("SELECT * FROM delitos WHERE localidad_id = ?", (localidad_id,))
+    row = cursor.fetchone()
+    if row:
+        datos["delitos"] = dict(row)
+
+    # Datos nacionales (medias)
+    cursor.execute("SELECT tipo, valor FROM datos_nacionales")
+    datos["medias_nacionales"] = {row[0]: row[1] for row in cursor.fetchall()}
+
     conn.close()
     return datos
+
+
+def buscar_localidades_por_nombre(prefix: str, limit: int = 10) -> list[dict]:
+    """
+    Busca localidades cuyo nombre empiece por `prefix` (case insensitive).
+
+    Retorna una lista de diccionarios con claves: id, nombre, latitud, longitud
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    like = f"{prefix}%"
+    cursor.execute(
+        "SELECT id, nombre, latitud, longitud FROM localidades WHERE nombre LIKE ? ORDER BY nombre LIMIT ?",
+        (like, limit),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [dict(r) for r in rows]
 
 
 def get_datos_comparativos(localidad_id: int) -> dict[str, Any]:
@@ -241,18 +296,53 @@ def get_datos_comparativos(localidad_id: int) -> dict[str, Any]:
 
 def calcular_puntuacion_100(puntuacion_raw: Optional[int]) -> int:
     """
-    Transforma puntuación raw (rango -2 a 18) a escala 1-100.
+    Transforma la puntuación raw (rango SCORE_MIN .. SCORE_MAX) a escala 0-100.
 
-    Usa interpolación lineal: ((score - min) / (max - min)) * 99 + 1
+    Fórmula lineal:
+        nota = ((puntuacion_raw - SCORE_MIN) / (SCORE_MAX - SCORE_MIN)) * 100
+
+    - Si puntuacion_raw es None -> devuelve 0
+    - Se clampa entre 0 y 100 y se redondea a entero
+
+    Ejemplos (con SCORE_MIN=-9, SCORE_MAX=33, rango=42):
+        -9  -> 0
+        33  -> 100
+        12  -> 50
+        21  -> ~71
     """
     if puntuacion_raw is None:
         return 0
 
-    # Interpolar de -2 a 18 -> 1 a 100
-    score_range = SCORE_MAX - SCORE_MIN  # 20
-    puntuacion_100 = ((puntuacion_raw - SCORE_MIN) / score_range) * 99 + 1
+    score_range = SCORE_MAX - SCORE_MIN
+    if score_range <= 0:
+        # Protección contra división por cero (valores mal configurados)
+        return 0
 
-    return int(max(1, min(100, puntuacion_100)))
+    puntuacion_100 = ((puntuacion_raw - SCORE_MIN) / score_range) * 100
+    return int(max(0, min(100, round(puntuacion_100))))
+
+
+def get_categoria_from_score(puntuacion_100: int) -> str:
+    """
+    Calcula categoría basada en puntuación 1-100.
+
+    Umbrales (nueva escala 26=100):
+    - Alta: 80-100 (top 20%)
+    - Media-Alta: 60-79
+    - Media: 40-59
+    - Media-Baja: 20-39
+    - Baja: 1-19 (bottom 20%)
+    """
+    if puntuacion_100 >= 80:
+        return "Alta"
+    elif puntuacion_100 >= 60:
+        return "Media-Alta"
+    elif puntuacion_100 >= 40:
+        return "Media"
+    elif puntuacion_100 >= 20:
+        return "Media-Baja"
+    else:
+        return "Baja"
 
 
 def get_color_categoria(categoria: Optional[str]) -> str:
