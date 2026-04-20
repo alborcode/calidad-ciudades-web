@@ -429,11 +429,22 @@ class DetailDialog:
         medias = datos.get("medias_nacionales", {})
         temp_nac = medias.get("temperatura_media", None)
         precipit_nac = medias.get("precipitacion_media", None)
+        viento_nac = medias.get("media_nacional_viento", None)
 
         # Obtener valores locales
         temp_med = clima.get("temperatura_media")
         precipit = clima.get("precipitaciones")
         viento = clima.get("viento")
+
+        # Color para viento: si es >25% mayor que la media → rojo
+        def get_viento_color(local_val, national_val):
+            if local_val is None or national_val is None or national_val == 0:
+                return None
+            if local_val > national_val * 1.25:
+                return "red-7"
+            return None
+
+        viento_color = get_viento_color(viento, viento_nac)
 
         # Función para color de temperatura
         def get_temp_color(local_val, national_val):
@@ -473,9 +484,8 @@ class DetailDialog:
 
             with ui.grid(columns=3).classes("w-full gap-3"):
                 self._add_info_item("Temp. media", f"{temp_med:.1f}°C" if temp_med is not None else "N/A", color=temp_color)
-                self._add_info_item("Precipit.", f"{precipit:.0f}mm" if precipit is not None else "N/A", color=precipit_color)
-                # Viento: mostrar valor sin color especial
-                self._add_info_item("Viento", f"{viento:.1f}km/h" if viento is not None else "N/A", color=None)
+                self._add_info_item("Precipit. media", f"{precipit:.0f}mm" if precipit is not None else "N/A", color=precipit_color)
+                self._add_info_item("Viento medio", f"{viento:.1f}km/h" if viento is not None else "N/A", color=viento_color)
 
     def _build_paro_section(self, datos: dict):
         """Construye la sección de desempleo."""
