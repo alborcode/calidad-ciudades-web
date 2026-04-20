@@ -48,21 +48,18 @@ class DetailDialog:
             self._build_score_section(datos)
             self._build_general_section(datos)
             self._build_map_section(datos)
-                self._build_admin_section(datos)
-                self._build_vivienda_section(datos)
-                self._build_transporte_section(datos)
-                self._build_sanidad_section(datos, localidad_id)
-                self._build_cultura_section(datos, localidad_id)
-                self._build_educacion_section(datos, localidad_id)
-                self._build_gastos_section(datos)
-                # Mover clima justo después de Ubicación / antes de Administración
-                # Ubicación se construye en _build_map_section que ya fue llamada.
-                # Insertar clima aquí para que aparezca antes de Administración en el flujo visual.
-                self._build_clima_section(datos)
-                self._build_admin_section(datos)
-                self._build_paro_section(datos)
-                self._build_renta_section(datos)
-                self._build_delincuencia_section(datos)
+            # Clima justo después de Ubicación (map) / antes de Administración
+            self._build_clima_section(datos)
+            self._build_admin_section(datos)
+            self._build_vivienda_section(datos)
+            self._build_transporte_section(datos)
+            self._build_sanidad_section(datos, localidad_id)
+            self._build_cultura_section(datos, localidad_id)
+            self._build_educacion_section(datos, localidad_id)
+            self._build_gastos_section(datos)
+            self._build_paro_section(datos)
+            self._build_renta_section(datos)
+            self._build_delincuencia_section(datos)
 
         self._dialog.open()
 
