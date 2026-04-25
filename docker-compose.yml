@@ -1,0 +1,23 @@
+# docker-compose.yml - Ejemplo para desarrollo local
+# NO usar en producción (usar Dockploy)
+
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: calidad-ciudades-web
+    ports:
+      - "8080:8080"
+    volumes:
+      # Montar directorio de datos persistente
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

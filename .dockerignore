@@ -1,0 +1,60 @@
+# .dockerignore - Calidad Ciudades Web
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+test_*.py
+*_test.py
+
+# Archivos temporales
+*.log
+*.tmp
+nul
+
+# Documentación
+*.md
+!requirements*.txt
+
+# Datos (se montan como volumen)
+data/*.db
+data/*.sqlite
+data/*.csv
+data/*.xls
+data/*.xlsx
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Otros
+.env
+.envrc
+.pyc
+.pyo
