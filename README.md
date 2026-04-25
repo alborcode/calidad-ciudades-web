@@ -76,6 +76,21 @@ pip install -r requirements.txt
 .venv/Scripts/python.exe -c "from app.database import buscar_ciudades; print('✅ Instalación correcta')"
 ```
 
+### Desarrollo Local (Opcional)
+
+Si necesitas cambiar la configuración (puerto, host):
+
+```bash
+# Instalar dependencias de desarrollo
+pip install -r requirements-dev.txt
+
+# Crear archivo .env (opcional)
+echo PORT=9000 > .env
+echo HOST=127.0.0.1 >> .env
+```
+
+**Ver guía completa**: [DESARROLLO.md](DESARROLLO.md)
+
 ---
 
 ## 💻 Uso
@@ -90,6 +105,8 @@ La aplicación se abrirá automáticamente en:
 ```
 http://localhost:8080
 ```
+
+**Configuración opcional**: La aplicación usa valores por defecto (host='0.0.0.0', port=8080). Para cambiar la configuración, ver [DESARROLLO.md](DESARROLLO.md).
 
 ### Navegación Básica
 
@@ -468,9 +485,11 @@ calidad-ciudades-web/
 │   └── test_app.py          # Tests unitarios
 ├── .venv/                   # Entorno virtual (no versionado)
 ├── .dockerignore            # Archivos excluidos de Docker
+├── .gitignore               # Archivos ignorados por Git
 ├── Dockerfile               # Configuración Docker
 ├── docker-compose.yml       # Ejemplo desarrollo local
 ├── DOCKER_DEPLOYMENT.md     # Guía de despliegue
+├── DESARROLLO.md            # Guía desarrollo local
 ├── MEMORY.md                # Estado del proyecto
 ├── PLAN.md                  # Planificación y tareas
 ├── AGENTS.md                # Contexto para agentes IA

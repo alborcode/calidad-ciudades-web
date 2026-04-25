@@ -215,11 +215,18 @@ ORDER BY cc.puntuacion DESC NULLS LAST
 
 ## 6. Dependencias
 ```
-nicegui>=1.4.0
-plotly>=6.0.0
-kaleido>=1.0.0
-numpy>=1.26.0
+nicegui>=3.10.0
+plotly>=6.7.0
+kaleido>=1.2.0
+numpy>=2.4.4
 ```
+
+### Dependencias de Desarrollo (Opcional)
+```
+python-dotenv>=1.0.0  # Para cargar .env en desarrollo local
+```
+
+**Ver**: `requirements-dev.txt` para más detalles.
 
 ## 8. Implementación Realizada
 

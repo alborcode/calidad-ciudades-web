@@ -92,6 +92,5 @@ if __name__ in {"__main__", "__mp_main__"}:
         reload=True,
         host='0.0.0.0',
         port=8080,
-        storage_secret="calidad-ciudades-secret-2024",
         favicon=favicon_data,
     )

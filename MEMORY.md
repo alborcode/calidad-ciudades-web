@@ -19,10 +19,11 @@
   - 14 - Actualizar documentación DOCKER_DEPLOYMENT.md, MEMORY.md, PLAN.md, AGENTS.md - **OpenAgent/qwen3.5-plus**
   - 15 - Crear README.md completo con documentación detallada de filtros y ventanas - **OpenAgent/qwen3.5-plus**
   - 16 - Mejorar filtros menú lateral (Costa, Metro, Aeropuerto, AVE, FEVE, UI) - **OpenAgent/qwen3.5-plus**
-  - 17 - Mejorar cabecera (icono, sticky header) - **OpenAgent/qwen3.5-plus**
+  - 17 - Mejorar cabecera de la aplicación - **OpenAgent/qwen3.5-plus**
   - 18 - Mejorar diálogos detalle (header/footer fijos, scroll, 90vh) - **OpenAgent/qwen3.5-plus**
   - 19 - Corregir bibliotecas (usa numero_bibliotecas de tabla educacion) - **OpenAgent/qwen3.5-plus**
   - 20 - Actualizar badges transporte (todos estáticos, añadir FEVE) - **OpenAgent/qwen3.5-plus**
+  - 21 - Mover configuración a variables de entorno y limpiar código - **OpenAgent/qwen3.5-plus**
 - Tarea en progreso: Ninguna
 
 ## Siguiente Paso
@@ -48,8 +49,11 @@
 - `app/components/filters.py` - Filtros búsqueda (pendiente mejorar)
 - `app/components/city_table.py` - Tabla resultados
 - `app/utils/visuals.py` - Helpers visuales comparativos
+- `app/utils/geo.py` - Funciones geográficas (haversine)
 - `Dockerfile` - Configuración Docker para Dockploy
 - `DOCKER_DEPLOYMENT.md` - Guía despliegue producción
+- `DESARROLLO.md` - Guía desarrollo local
+- `requirements-dev.txt` - Dependencias de desarrollo
 
 ## Contexto Importante
 - BD: `data/calidad_ciudades.db` (427 ciudades)
@@ -73,6 +77,6 @@
 - ⬜ Opcional: Añadir tests unitarios
 
 ## Tracking de Uso
-- Total tareas completadas: 20
+- Total tareas completadas: 21
 - Agentes utilizados: OpenCode, OpenAgent
 - Modelos utilizados: minimax-m2.5, gpt-5-mini, qwen3.5-plus

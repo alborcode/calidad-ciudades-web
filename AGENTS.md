@@ -26,8 +26,8 @@ data/
 ## Reglas Críticas NiceGUI
 1. **No usar `ui.header()` dentro de `ui.column()`** → Error "top level layout elements cannot be nested"
 2. **Handlers de click: usar `def` (sync), no `async`** → Si necesitas async, usar `async def` pero sin `await` en operaciones UI
-3. **`storage_secret` obligatorio** → `ui.run(storage_secret='...')` para browser storage
-4. **Importar desde venv** → `.venv/Scripts/python.exe -m app.main`
+3. **Importar desde venv** → `.venv/Scripts/python.exe -m app.main`
+4. **Variables de entorno** → No usar `storage_secret` (no se usa app.storage en esta aplicación)
 
 ## Scoring de Ciudades
 - Rango en BD: -2 (mínimo) a 18 (máximo)

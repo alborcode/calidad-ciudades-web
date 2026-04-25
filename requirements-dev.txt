@@ -1,10 +1,8 @@
 # requirements-dev.txt - Dependencias de desarrollo
-# Incluir requirements.txt de producción
+# Instalar con: pip install -r requirements-dev.txt
+
+# Incluye todas las dependencias de producción
 -r requirements.txt
 
-# Testing
-pytest>=9.0.0
-pytest-timeout>=2.4.0
-
-# Desarrollo
-python-dotenv>=1.2.0
+# Herramientas de desarrollo
+python-dotenv>=1.0.0  # Para cargar .env en desarrollo local
