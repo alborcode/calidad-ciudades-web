@@ -27,9 +27,11 @@ class CiudadFiltro:
     tiene_teatros: bool = False
     tiene_museos: bool = False
     es_costa: bool = False
-    tiene_transporte_urbano: bool = False
+    tiene_metro: bool = False
     tiene_hospital: bool = False
     tiene_universidad: bool = False
+    tiene_aeropuerto: bool = False
+    tiene_ave_media_distancia: bool = False
 
 
 @dataclass
@@ -95,20 +97,22 @@ def buscar_ciudades(filtro: CiudadFiltro) -> list[CiudadResultado]:
         query += " AND EXISTS (SELECT 1 FROM cultura cu WHERE cu.localidad_id = l.id AND cu.num_museos > 0)"
 
     if filtro.es_costa:
-        query += " AND EXISTS (SELECT 1 FROM calidad_ciudad cc2 WHERE cc2.localidad_id = l.id AND cc2.nota_costa = 1)"
+        query += " AND EXISTS (SELECT 1 FROM costa c WHERE c.localidad_id = l.id AND c.tiene_playa = 1)"
 
-    if filtro.tiene_transporte_urbano:
-        query += """ AND EXISTS (
-            SELECT 1 FROM transporte_urbano tu 
-            WHERE tu.localidad_id = l.id 
-            AND (tu.tiene_metro = 1 OR tu.tiene_autobus_municipal = 1 OR tu.tiene_tranvia = 1)
-        )"""
+    if filtro.tiene_metro:
+        query += " AND EXISTS (SELECT 1 FROM transporte_urbano tu WHERE tu.localidad_id = l.id AND tu.tiene_metro = 1)"
 
     if filtro.tiene_hospital:
         query += " AND EXISTS (SELECT 1 FROM sanidad s WHERE s.localidad_id = l.id AND s.num_hospitales_total > 0)"
 
     if filtro.tiene_universidad:
         query += " AND EXISTS (SELECT 1 FROM calidad_ciudad cc3 WHERE cc3.localidad_id = l.id AND cc3.nota_universidad > 0)"
+
+    if filtro.tiene_aeropuerto:
+        query += " AND EXISTS (SELECT 1 FROM transporte t WHERE t.localidad_id = l.id AND t.tiene_aeropuerto = 1)"
+
+    if filtro.tiene_ave_media_distancia:
+        query += " AND EXISTS (SELECT 1 FROM transporte t WHERE t.localidad_id = l.id AND t.tiene_larga_media_distancia = 1)"
 
     query += " ORDER BY cc.puntuacion DESC NULLS LAST"
 
@@ -175,6 +179,11 @@ def get_datos_localidad(localidad_id: int) -> dict[str, Any]:
     row = cursor.fetchone()
     if row:
         datos["cultura"] = dict(row)
+
+    cursor.execute("SELECT * FROM educacion WHERE localidad_id = ?", (localidad_id,))
+    row = cursor.fetchone()
+    if row:
+        datos["educacion"] = dict(row)
 
     # Administración ( AGE - Administración General del Estado )
     cursor.execute("SELECT * FROM administracion_age WHERE localidad_id = ?", (localidad_id,))

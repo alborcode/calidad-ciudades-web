@@ -37,27 +37,32 @@ class MainPage:
         self.dialogo_detalle = DetailDialog()
         self.dialogo_detalle.build()
 
-        # Título con card
-        with ui.card().classes("w-full mb-4 p-4 bg-primary text-white"):
-            ui.label("Calidad de Ciudades").classes("text-h5 font-bold")
-            ui.label("Buscador de ciudades españolas por calidad de vida").classes(
-                "text-body1"
-            )
-
-        # Contenedor responsivo: row en PC, column en móvil
-        with ui.row().classes("w-full gap-6 responsive-container"):
-            # Panel de filtros (izquierda en PC, arriba en móvil)
-            with ui.column().classes("w-80 filters-panel"):
-                self.filtros = FiltrosComponent(on_filter_change=self.on_filter_change)
-                self.filtros.build()
-
-            # Panel de resultados (derecha en PC, abajo en móvil)
-            with ui.column().classes("flex-grow results-panel gap-4"):
-                self._resultados_label = ui.label("0 ciudades encontradas").classes(
-                    "text-body2 text-grey"
+        # Header fijo usando ui.header
+        with ui.header().classes("bg-primary text-white").props("elevated"):
+            with ui.row().classes("items-center gap-2 w-full"):
+                ui.icon("location_city", size="sm").classes("text-white")
+                ui.label("Calidad de Ciudades").classes("text-h6 font-bold")
+            with ui.row().classes("w-full"):
+                ui.label("Buscador de ciudades españolas por calidad de vida").classes(
+                    "text-body2"
                 )
-                self.tabla = CityTableComponent(on_row_click=self.on_row_click)
-                self.tabla.build()
+
+# Contenedor principal con padding para el header fijo
+        with ui.column().classes("w-full p-4 gap-4"):
+            # Contenedor responsivo: row en PC, column en móvil
+            with ui.row().classes("w-full gap-6 responsive-container"):
+                # Panel de filtros (izquierda en PC, arriba en móvil)
+                with ui.column().classes("w-80 filters-panel"):
+                    self.filtros = FiltrosComponent(on_filter_change=self.on_filter_change)
+                    self.filtros.build()
+
+                # Panel de resultados (derecha en PC, abajo en móvil)
+                with ui.column().classes("flex-grow results-panel gap-4"):
+                    self._resultados_label = ui.label("0 ciudades encontradas").classes(
+                        "text-body2 text-grey"
+                    )
+                    self.tabla = CityTableComponent(on_row_click=self.on_row_click)
+                    self.tabla.build()
 
         # Cargar datos iniciales
         self.on_filter_change()

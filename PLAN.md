@@ -241,6 +241,8 @@ numpy>=1.26.0
 ---
 
 ## 7. Criterios de Éxito
+
+### Funcionalidades Completadas ✅
 - [x] Filtros funcionan individualmente y combinados
 - [x] Tabla muestra resultados ordenados por puntuación
 - [x] Círculo muestra color correcto según categoría
@@ -251,3 +253,25 @@ numpy>=1.26.0
 - [x] Aplicación inicia sin errores
 - [x] Mapa con Plotly/OpenStreetMap integrado
 - [x] Zoom adaptativo por zona geográfica
+- [x] Marcador mapa: círculo azul con tooltip personalizado
+- [x] Diálogo detalle: cabecera fija + cuerpo scroll + pie fijo
+- [x] Cajas Paro, Renta y Seguridad con colores comparativos
+- [x] Docker configurado para Dockploy
+
+### Completadas ✅
+- [x] Mejorar UI de filtros del menú lateral (izquierda)
+- [x] Mejorar cabecera de la aplicación
+- [x] Mejorar diálogos detalle (header/footer fijos, scroll, 90vh)
+- [x] Actualizar badges transporte (todos estáticos, añadir FEVE)
+
+---
+
+## 8. Estado Actual del Proyecto
+
+**Completado**: 100% de funcionalidades principales
+- ✅ Core de la aplicación (filtros, tabla, detalle, mapa)
+- ✅ UI del diálogo de detalle (completa)
+- ✅ Configuración Docker para producción
+- ✅ UI página principal (filtros y cabecera mejorados)
+
+**Todas las tareas completadas** ✅

@@ -247,9 +247,9 @@ class DetailDialog:
                 autosize=True,
             )
 
-            # Crear contenedor con estilo para limitar ancho
+            # Contenedor responsive con max-width para evitar desbordamiento
             with ui.element("div").style(
-                "width: 100%; max-width: 100%; overflow: hidden;"
+                "width: 100%; max-width: 100%; overflow: hidden; position: relative;"
             ):
                 ui.plotly(fig)
 
@@ -261,7 +261,8 @@ class DetailDialog:
         # Recopilar todos los servicios de transporte
         servicios = []
 
-        # Orden: Aeropuerto primero, luego AVE/Media Distancia, luego Regional
+        # === TRANSPORTE (tabla transporte) ===
+        # Ferrocarril: Aeropuerto, AVE/Media Distancia, Regional, Cercanías, FEVE
         if trans.get("tiene_aeropuerto"):
             servicios.append("Aeropuerto")
         if trans.get("tiene_ave") or trans.get("tiene_larga_media_distancia"):
@@ -270,8 +271,11 @@ class DetailDialog:
             servicios.append("Regional")
         if trans.get("tiene_cercanias"):
             servicios.append("Cercanías")
+        if trans.get("tiene_feve"):
+            servicios.append("FEVE")
 
-        # Transporte urbano - color naranja (amber-8)
+        # === TRANSPORTE URBANO (tabla transporte_urbano) ===
+        # Metro, Autobús municipal, Tranvía
         if trans_urbano.get("tiene_metro"):
             servicios.append("Metro")
         if trans_urbano.get("tiene_autobus_municipal"):
@@ -291,22 +295,12 @@ class DetailDialog:
             with ui.row().classes("gap-2 flex-wrap"):
                 for svc in servicios:
                     color = "primary"
-                    # Metro, Autobús, Tranvía y Cercanías usan color diferente (transporte urbano)
-                    if svc in ("Metro", "Autobús municipal", "Tranvía", "Cercanías"):
+                    # Transporte urbano usa color diferente (amber-8)
+                    if svc in ("Metro", "Autobús municipal", "Tranvía"):
                         color = "amber-8"
 
-                    # Crear badge clickeable para transporte urbano
-                    if svc == "Metro" and localidad_id:
-                        ui.badge(svc, color=color).props("outline").on('click', lambda e, lid=localidad_id: self._show_metro_detail(lid))
-                    elif svc == "Autobús municipal" and localidad_id:
-                        ui.badge(svc, color=color).props("outline").on('click', lambda e, lid=localidad_id: self._show_autobus_detail(lid))
-                    elif svc == "Tranvía" and localidad_id:
-                        ui.badge(svc, color=color).props("outline").on('click', lambda e, lid=localidad_id: self._show_tranvia_detail(lid))
-                    elif svc in ("Aeropuerto", "AVE/Media Distancia", "Regional", "Cercanías"):
-                        # Sin ventana de detalles para estos
-                        ui.badge(svc, color=color).props("outline")
-                    else:
-                        ui.badge(svc, color=color).props("outline")
+                    # Todos los badges son estáticos (no clickeables)
+                    ui.badge(svc, color=color).props("outline")
 
     def _build_admin_section(self, datos: dict):
         """Construye la sección de administración."""
@@ -736,10 +730,6 @@ class DetailDialog:
         contenido.clear()
 
         with contenido:
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("local_hospital")
-                ui.label("Hospitales de la Localidad").classes("text-h6 font-bold")
-
             if not hospitales:
                 ui.label("No hay hospitales registrados")
             else:
@@ -781,10 +771,6 @@ class DetailDialog:
         contenido.clear()
 
         with contenido:
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("local_hospital")
-                ui.label("Centros de Salud de la Localidad").classes("text-h6 font-bold")
-
             if not centros:
                 ui.label("No hay centros de salud registrados")
             else:
@@ -842,9 +828,10 @@ class DetailDialog:
         """Construye la sección de educación (bibliotecas, universidades e institutos)."""
         calidad = datos.get("calidad_ciudad", {})
         loc = datos.get("localidad", {})
+        educacion = datos.get("educacion", {})
         
-        # Bibliotecas: nota_bibliotecas indica si hay bibliotecas
-        nota_bibliotecas = calidad.get("nota_bibliotecas", 0)
+        # Bibliotecas: numero_bibliotecas de la tabla educacion
+        num_bibliotecas = educacion.get("numero_bibliotecas", 0) if educacion else 0
 
         # Institutos: buscar en centroseducativos_detalle
         codigo_ine = loc.get("codigo_ine")
@@ -876,10 +863,10 @@ class DetailDialog:
 
             with ui.grid(columns=3).classes("w-full gap-4"):
                 # Bibliotecas - clickeable si hay
-                if nota_bibliotecas > 0:
+                if num_bibliotecas > 0:
                     self._add_clickable_item(
                         "Bibliotecas",
-                        nota_bibliotecas,
+                        num_bibliotecas,
                         lambda: self._show_bibliotecas_detalles(localidad_id),
                         icon="menu_book",
                     )
@@ -928,10 +915,6 @@ class DetailDialog:
         contenido.clear()
 
         with contenido:
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("menu_book")
-                ui.label("Bibliotecas de la Localidad").classes("text-h6 font-bold")
-
             if not bibliotecas:
                 ui.label("No hay bibliotecas registradas")
             else:
@@ -991,15 +974,14 @@ class DetailDialog:
         universidades = cursor.fetchall()
         conn.close()
 
-        with ui.dialog() as dialog, ui.card().classes("q-pa-md"):
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("school")
-                ui.label("Universidades de la Localidad").classes("text-h6 font-medium")
+        contenido = self._universidades_dialog._content
+        contenido.clear()
 
+        with contenido:
             if not universidades:
                 ui.label("No hay universidades registradas")
             else:
-                with ui.column().classes("w-full gap-3 mt-3"):
+                with ui.column().classes("w-full gap-3"):
                     for u in universidades:
                         nombre = u[0] or "Sin nombre"
                         anno = u[1]
@@ -1024,10 +1006,7 @@ class DetailDialog:
                                     icon="open_in_new",
                                 ).props("flat color=primary size=sm")
 
-            with ui.row().classes("mt-4 justify-end"):
-                ui.button("Cerrar", on_click=dialog.close).props("flat color=grey")
-
-        dialog.open()
+        self._universidades_dialog._dialog.open()
 
     def _show_institutos_detalles(self, localidad_id: int):
         """Muestra el diálogo con detalles de centros educativos."""
@@ -1045,15 +1024,14 @@ class DetailDialog:
         centros = cursor.fetchall()
         conn.close()
 
-        with ui.dialog() as dialog, ui.card().classes("q-pa-md"):
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("school")
-                ui.label("Institutos/Colegios de la Localidad").classes("text-h6 font-medium")
+        contenido = self._institutos_dialog._content
+        contenido.clear()
 
+        with contenido:
             if not centros:
                 ui.label("No hay centros educativos registrados")
             else:
-                with ui.column().classes("w-full gap-3 mt-3"):
+                with ui.column().classes("w-full gap-3"):
                     for c in centros:
                         with ui.card().classes("w-full p-3"):
                             ui.label(c["nombre"] or "Sin nombre").classes("text-body1 font-medium")
@@ -1064,10 +1042,7 @@ class DetailDialog:
                             if c["telefono"]:
                                 ui.label(f"Telf: {c['telefono']}").classes("text-body2 text-grey-7")
 
-            with ui.row().classes("mt-4 justify-end"):
-                ui.button("Cerrar", on_click=dialog.close).props("flat color=grey")
-
-        dialog.open()
+        self._institutos_dialog._dialog.open()
 
     def _build_cultura_section(self, datos: dict, localidad_id: int):
         """Construye la sección de cultura y ocio."""
@@ -1136,10 +1111,6 @@ class DetailDialog:
         contenido.clear()
 
         with contenido:
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("movie")
-                ui.label("Cines de la Localidad").classes("text-h6 font-bold")
-
             if not cines:
                 ui.label("No hay cines registrados")
             else:
@@ -1176,10 +1147,6 @@ class DetailDialog:
         contenido.clear()
 
         with contenido:
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("theater_comedy")
-                ui.label("Teatros de la Localidad").classes("text-h6 font-bold")
-
             if not teatros:
                 ui.label("No hay teatros registrados")
             else:
@@ -1217,10 +1184,6 @@ class DetailDialog:
         contenido.clear()
 
         with contenido:
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("museum")
-                ui.label("Museos de la Localidad").classes("text-h6 font-bold")
-
             if not museos:
                 ui.label("No hay museos registrados")
             else:
@@ -1285,18 +1248,22 @@ class DetailDialog:
                     ui.button("Cerrar", on_click=self._dialog.close).props("color=grey")
 
         # Crear diálogos auxiliares para detalles
-        self._hospital_dialog = self._create_mini_dialog("Hospitales")
-        self._cines_dialog = self._create_mini_dialog("Cines")
-        self._teatros_dialog = self._create_mini_dialog("Teatros")
-        self._museos_dialog = self._create_mini_dialog("Museos")
-        self._bibliotecas_dialog = self._create_mini_dialog("Bibliotecas")
-        self._universidades_dialog = self._create_mini_dialog("Universidades")
-        self._institutos_dialog = self._create_mini_dialog("Institutos/Colegios")
+        self._hospital_dialog = self._create_mini_dialog("Hospitales", "local_hospital")
+        self._cines_dialog = self._create_mini_dialog("Cines", "movie")
+        self._teatros_dialog = self._create_mini_dialog("Teatros", "theater_comedy")
+        self._museos_dialog = self._create_mini_dialog("Museos", "museum")
+        self._bibliotecas_dialog = self._create_mini_dialog("Bibliotecas", "menu_book")
+        self._universidades_dialog = self._create_mini_dialog("Universidades", "school")
+        self._institutos_dialog = self._create_mini_dialog("Institutos/Colegios", "school")
+        self._metro_dialog = self._create_mini_dialog("Metro", "train")
+        self._autobus_dialog = self._create_mini_dialog("Autobús municipal", "directions_bus")
+        self._tranvia_dialog = self._create_mini_dialog("Tranvía", "tram")
+        self._cercanias_dialog = self._create_mini_dialog("Cercanías", "train")
 
         return self._dialog
 
-    def _create_mini_dialog(self, title: str):
-        """Crea un diálogo para detalles (responsivo)."""
+    def _create_mini_dialog(self, title: str, icon: str = "info"):
+        """Crea un diálogo para detalles (responsivo) con header fijo, contenido scrollable y footer fijo."""
 
         class MiniDialog:
             def __init__(self):
@@ -1306,15 +1273,20 @@ class DetailDialog:
         mini = MiniDialog()
         # Diálogo responsivo: 90% en móvil, max 600px en PC
         with ui.dialog().props("width=90vw, max-width=600px") as mini._dialog:
-            with ui.card().classes("q-pa-md"):
-                with ui.column().classes(
-                    "gap-3"
-                ) as mini._content:
-                    pass
-                with ui.card_actions().classes("justify-end"):
-                    ui.button("Cerrar", on_click=mini._dialog.close).props(
-                        "flat color=grey"
-                    )
+            with ui.card().classes("q-pa-md").style("display: flex; flex-direction: column; max-height: 90vh;"):
+                # Header fijo
+                with ui.row().classes("items-center gap-2 w-full flex-shrink-0 pb-2 border-b"):
+                    ui.icon(icon).classes("text-primary")
+                    ui.label(f"{title} de la Localidad").classes("text-h6 font-bold")
+
+                # Contenido con scroll
+                with ui.scroll_area().classes("flex-grow-1 w-full").style("min-height: 100px; max-height: 50vh;"):
+                    with ui.column().classes("gap-3") as mini._content:
+                        pass
+
+                # Footer fijo centrado
+                with ui.row().classes("w-full flex-shrink-0 pt-2 border-t justify-center"):
+                    ui.button("Cerrar", on_click=mini._dialog.close).props("color=grey")
 
         return mini
 
@@ -1337,23 +1309,18 @@ class DetailDialog:
             ui.notify("No hay datos de Metro para esta localidad", color="warning")
             return
 
-        with ui.dialog().props("width=500px"), ui.card().classes("q-pa-md"):
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("subway")
-                ui.label("Metro").classes("text-h6 font-medium")
-            with ui.list().classes("w-full mt-3"):
+        contenido = self._metro_dialog._content
+        contenido.clear()
+
+        with contenido:
+            with ui.column().classes("w-full gap-3"):
                 for row in metros:
                     nombre, ano, lineas, estaciones_km, km = row
-                    with ui.list_item():
-                        with ui.column().classes("w-full gap-1"):
-                            ui.label(f"{nombre}").classes("text-body1 font-medium")
-                            info = f"Año: {ano or 'N/A'} | Líneas: {lineas or 'N/A'} | Estaciones: {estaciones_km or 'N/A'} | Km: {km or 'N/A'}"
-                            ui.label(info).classes("text-body2 text-grey-7")
-            with ui.row().classes("mt-4 justify-end"):
-                ui.button("Cerrar", on_click=lambda: ui.notify("Cerrar")).props("flat")
+                    with ui.card().classes("w-full"):
+                        ui.label(f"{nombre}").classes("text-body1 font-medium")
+                        info = f"Año: {ano or 'N/A'} | Líneas: {lineas or 'N/A'} | Estaciones: {estaciones_km or 'N/A'} | Km: {km or 'N/A'}"
+                        ui.label(info).classes("text-body2 text-grey-7")
 
-        # Abrir mini-diálogo existente en lugar de crear uno nuevo cada vez
-        self._metro_dialog = self._create_mini_dialog("Metro")
         self._metro_dialog._dialog.open()
 
     def _show_autobus_detail(self, localidad_id: int):
@@ -1375,23 +1342,19 @@ class DetailDialog:
             ui.notify("No hay datos de Autobuses para esta localidad", color="warning")
             return
 
-        with ui.dialog().props("width=500px"), ui.card().classes("q-pa-md"):
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("directions_bus")
-                ui.label("Autobuses municipales").classes("text-h6 font-medium")
-            with ui.list().classes("w-full mt-3"):
+        contenido = self._autobus_dialog._content
+        contenido.clear()
+
+        with contenido:
+            with ui.column().classes("w-full gap-3"):
                 for row in autobuses:
                     denom, nombre, sistema = row
-                    with ui.list_item():
-                        with ui.column().classes("w-full gap-1"):
-                            ui.label(f"{denom}").classes("text-body1 font-medium")
-                            ui.label(f"{nombre}").classes("text-body2 text-grey-7")
-                            if sistema:
-                                ui.label(f"Sistema: {sistema}").classes("text-body2 text-grey-7")
-            with ui.row().classes("mt-4 justify-end"):
-                ui.button("Cerrar", on_click=lambda: ui.notify("Cerrar")).props("flat")
+                    with ui.card().classes("w-full"):
+                        ui.label(f"{denom}").classes("text-body1 font-medium")
+                        ui.label(f"{nombre}").classes("text-body2 text-grey-7")
+                        if sistema:
+                            ui.label(f"Sistema: {sistema}").classes("text-body2 text-grey-7")
 
-        self._autobus_dialog = self._create_mini_dialog("Autobuses")
         self._autobus_dialog._dialog.open()
 
     def _show_tranvia_detail(self, localidad_id: int):
@@ -1413,20 +1376,49 @@ class DetailDialog:
             ui.notify("No hay datos de Tranvías para esta localidad", color="warning")
             return
 
-        with ui.dialog().props("width=500px"), ui.card().classes("q-pa-md"):
-            with ui.row().classes("items-center gap-2"):
-                ui.icon("tram")
-                ui.label("Tranvías").classes("text-h6 font-medium")
-            with ui.list().classes("w-full mt-3"):
+        contenido = self._tranvia_dialog._content
+        contenido.clear()
+
+        with contenido:
+            with ui.column().classes("w-full gap-3"):
                 for row in tranvias:
                     red, servicio, lineas, km = row
-                    with ui.list_item():
-                        with ui.column().classes("w-full gap-1"):
-                            ui.label(f"{red}").classes("text-body1 font-medium")
-                            info = f"Líneas: {lineas or 'N/A'} | Longitud: {km or 'N/A'} km"
-                            ui.label(info).classes("text-body2 text-grey-7")
-            with ui.row().classes("mt-4 justify-end"):
-                ui.button("Cerrar", on_click=lambda: ui.notify("Cerrar")).props("flat")
+                    with ui.card().classes("w-full"):
+                        ui.label(f"{red}").classes("text-body1 font-medium")
+                        info = f"Líneas: {lineas or 'N/A'} | Longitud: {km or 'N/A'} km"
+                        ui.label(info).classes("text-body2 text-grey-7")
 
-        self._tranvia_dialog = self._create_mini_dialog("Tranvías")
         self._tranvia_dialog._dialog.open()
+
+    def _show_cercanias_detail(self, localidad_id: int):
+        """Muestra ventana con datos de Cercanías."""
+        from app.database import get_connection
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT nombre, numero_estaciones, linea "
+            "FROM cercanias_detalle WHERE codigo_municipio_ine = "
+            "(SELECT codigo_ine FROM localidades WHERE id = ?)",
+            (localidad_id,),
+        )
+        cercanias = cursor.fetchall()
+        conn.close()
+
+        if not cercanias:
+            ui.notify("No hay datos de Cercanías para esta localidad", color="warning")
+            return
+
+        contenido = self._cercanias_dialog._content
+        contenido.clear()
+
+        with contenido:
+            with ui.column().classes("w-full gap-3"):
+                for row in cercanias:
+                    nombre, estaciones, linea = row
+                    with ui.card().classes("w-full"):
+                        ui.label(f"{nombre}").classes("text-body1 font-medium")
+                        info = f"Línea: {linea or 'N/A'} | Estaciones: {estaciones or 'N/A'}"
+                        ui.label(info).classes("text-body2 text-grey-7")
+
+        self._cercanias_dialog._dialog.open()

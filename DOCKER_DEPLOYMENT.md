@@ -20,12 +20,11 @@ Configuración Docker para desplegar la aplicación Calidad Ciudades Web en prod
 La base de datos **NO** está en el repositorio. Debes subirla manualmente al servidor:
 
 ```bash
-# Copiar BD al servidor
+# Copiar solo la BD al servidor (recomendado)
 scp data/calidad_ciudades.db usuario@servidor:/path/to/data/
-
-# Copiar directorio data completo (si incluye CSV, XLS, etc.)
-scp -r data/ usuario@servidor:/path/to/data/
 ```
+
+**Importante**: El directorio `data/` en el servidor solo debe contener la base de datos `calidad_ciudades.db`. Otros archivos (CSV, XLS, etc.) no son necesarios en producción.
 
 ### 2. Configurar en Dockploy
 
@@ -108,19 +107,19 @@ docker-compose down
 │   ├── components/
 │   └── ...
 ├── data/                   # Volumen montado desde el servidor
-│   ├── calidad_ciudades.db
-│   ├── csv/
-│   ├── xls/
-│   └── ...
+│   └── calidad_ciudades.db # ÚNICO archivo necesario
 └── requirements.txt
 ```
+
+**Nota**: En producción, el directorio `data/` solo contiene la base de datos SQLite. No se requieren archivos CSV, XLS u otros formatos.
 
 ## Consideraciones
 
 ### Base de Datos
 
-- La BD se monta como volumen persistente
-- Actualizaciones de BD: copiar nuevo archivo `.db` y reiniciar contenedor
+- La BD se monta como volumen persistente `/path/en/servidor/data:/app/data`
+- **Único archivo requerido**: `calidad_ciudades.db`
+- Actualizaciones de BD: copiar nuevo archivo `.db` con `scp` y reiniciar contenedor
 - Backup: copiar archivo `.db` del directorio de datos
 
 ### Actualizaciones

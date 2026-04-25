@@ -22,7 +22,9 @@ class FiltrosComponent:
         self.tiene_teatros: ui.Checkbox = None
         self.tiene_museos: ui.Checkbox = None
         self.es_costa: ui.Checkbox = None
-        self.tiene_transporte: ui.Checkbox = None
+        self.tiene_metro: ui.Checkbox = None
+        self.tiene_aeropuerto: ui.Checkbox = None
+        self.tiene_ave_media_distancia: ui.Checkbox = None
         self.tiene_hospital: ui.Checkbox = None
         self.tiene_universidad: ui.Checkbox = None
         self._container: ui.Column = None
@@ -46,9 +48,11 @@ class FiltrosComponent:
             tiene_teatros=self.tiene_teatros.value,
             tiene_museos=self.tiene_museos.value,
             es_costa=self.es_costa.value,
-            tiene_transporte_urbano=self.tiene_transporte.value,
+            tiene_metro=self.tiene_metro.value,
             tiene_hospital=self.tiene_hospital.value,
             tiene_universidad=self.tiene_universidad.value,
+            tiene_aeropuerto=self.tiene_aeropuerto.value,
+            tiene_ave_media_distancia=self.tiene_ave_media_distancia.value,
         )
 
     def _notify_change(self):
@@ -172,25 +176,32 @@ class FiltrosComponent:
         self.tiene_teatros.set_value(False)
         self.tiene_museos.set_value(False)
         self.es_costa.set_value(False)
-        self.tiene_transporte.set_value(False)
+        self.tiene_metro.set_value(False)
         self.tiene_hospital.set_value(False)
         self.tiene_universidad.set_value(False)
+        self.tiene_aeropuerto.set_value(False)
+        self.tiene_ave_media_distancia.set_value(False)
         self._notify_change()
 
     def build(self) -> ui.Column:
         """Construye y retorna el componente UI."""
         with ui.column().classes("gap-4") as self._container:
-            # Título
-            ui.label("Filtros de Búsqueda").classes("text-h6 font-bold")
+            # Título + Botón limpiar en la misma línea (responsivo)
+            with ui.row().classes("items-center justify-between w-full"):
+                ui.label("Filtros Búsqueda").classes("text-h6 font-bold")
+                ui.button(
+                    "Limpiar filtros", on_click=self.clear_filters, icon="filter_alt_off"
+                ).props("flat color=grey size=sm")
 
             # Fila 1: Precios
-            with ui.row().classes("gap-4 items-end"):
+            with ui.column().classes("gap-1"):
+                ui.label("Precio Alquiler máximo").classes("text-caption text-grey-6")
                 self.precio_alquiler = ui.number(
-                    label="Precio alquiler máximo (€/mes)",
+                    label="Precio en €",
                     placeholder="Ej: 800",
                     min=0,
                     step=10,
-                ).on_value_change(lambda: self._notify_change())
+                ).props("outlined style='width: 300px'").on_value_change(lambda: self._notify_change())
 
             # Separador
             ui.separator()
@@ -198,8 +209,8 @@ class FiltrosComponent:
             # Título servicios
             ui.label("Servicios requeridos").classes("text-subtitle1 font-medium")
 
-            # Fila 2: Cultura
-            with ui.row().classes("gap-6"):
+# Fila 2: Cultura
+            with ui.row().classes("gap-2"):
                 self.tiene_cines = ui.checkbox("Cines").on_value_change(
                     lambda: self._notify_change()
                 )
@@ -211,10 +222,10 @@ class FiltrosComponent:
                 )
 
             # Fila 3: Otros servicios
-            with ui.row().classes("gap-6"):
-                self.tiene_transporte = ui.checkbox(
-                    "Transporte urbano"
-                ).on_value_change(lambda: self._notify_change())
+            with ui.row().classes("gap-2"):
+                self.tiene_metro = ui.checkbox("Metro").on_value_change(
+                    lambda: self._notify_change()
+                )
                 self.tiene_hospital = ui.checkbox("Hospital").on_value_change(
                     lambda: self._notify_change()
                 )
@@ -222,17 +233,26 @@ class FiltrosComponent:
                     lambda: self._notify_change()
                 )
 
-            # Fila 4: Localización
-            with ui.row().classes("gap-6"):
-                self.es_costa = ui.checkbox("Es de costa").on_value_change(
+            # Fila 4: Transporte
+            with ui.row().classes("gap-2"):
+                self.tiene_aeropuerto = ui.checkbox("Aeropuerto").on_value_change(
                     lambda: self._notify_change()
                 )
-            
+                self.tiene_ave_media_distancia = ui.checkbox("AVE/Media Distancia").on_value_change(
+                    lambda: self._notify_change()
+                )
+                self.es_costa = ui.checkbox("Costa").on_value_change(
+                    lambda: self._notify_change()
+                )
+
+            # Separador antes de localidad origen
+            ui.separator()
+
             # Fila 5: Localidad Origen (autocomplete)
             with ui.column().classes("gap-2"):
                 ui.label("Localidad Origen (cálculo de distancias)").classes("text-caption text-grey-6")
                 # Usar input simple y sugerencias dinámicas
-                self.localidad_input = ui.input(placeholder="Nombre Localidad").props("style='width: 300px'")
+                self.localidad_input = ui.input(placeholder="Nombre Localidad").props("outlined style='width: 300px'")
                 # Lista de sugerencias (se actualizará on_value_change)
                 # on_value_change pasa un objeto event con el valor
                 self.localidad_input.on_value_change(lambda e: self._on_localidad_input_change(e.value))
@@ -246,11 +266,6 @@ class FiltrosComponent:
                 # Badge permanente para la localidad fijada (se renderiza cuando existe)
                 with ui.row() as self._badge_container:
                     pass
-
-            # Botón limpiar
-            ui.button(
-                "Limpiar filtros", on_click=self.clear_filters, icon="filter_alt_off"
-            ).props("flat color=grey")
 
         return self._container
 
