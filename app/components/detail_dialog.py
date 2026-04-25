@@ -33,6 +33,7 @@ class DetailDialog:
         self._museos_dialog = None
         self._bibliotecas_dialog = None
         self._universidades_dialog = None
+        self._institutos_dialog = None
         self._current_datos = None  # Para guardar datos actuales entre llamadas
         self._origen_getter = None
 
@@ -41,10 +42,13 @@ class DetailDialog:
         datos = get_datos_localidad(localidad_id)
         self._current_datos = datos  # Guardar para usar en _show_universidades_detalles
 
+        self._header.clear()
         self._content.clear()
 
-        with self._content:
+        with self._header:
             self._build_header(datos)
+        
+        with self._content:
             self._build_score_section(datos)
             self._build_general_section(datos)
             self._build_map_section(datos)
@@ -56,7 +60,6 @@ class DetailDialog:
             self._build_sanidad_section(datos, localidad_id)
             self._build_cultura_section(datos, localidad_id)
             self._build_educacion_section(datos, localidad_id)
-            self._build_gastos_section(datos)
             self._build_paro_section(datos)
             self._build_renta_section(datos)
             self._build_delincuencia_section(datos)
@@ -115,12 +118,12 @@ class DetailDialog:
     def _build_score_section(self, datos: dict):
         """Construye la sección de puntuación."""
         calidad = datos.get("calidad_ciudad", {})
-        puntuacion = calidad.get("puntuacion")
-        categoria_db = calidad.get("categoria")  # Categoría de la BD (vieja)
+        # Usar nota_final directamente (ya viene en escala 0-100)
+        puntuacion = calidad.get("nota_final")
+        categoria_db = calidad.get("categoria")
 
-        # Calcular categoría basada en puntuación 100 (nueva escala 28=100)
-        puntuacion_100 = calcular_puntuacion_100(puntuacion)
-        categoria = get_categoria_from_score(puntuacion_100)
+        # La puntuación ya está en escala 0-100
+        categoria = get_categoria_from_score(puntuacion if puntuacion else 0)
 
         with ui.card().classes("w-full mb-4"):
             ui.label("Puntuación de Calidad").classes("text-h6 font-medium mb-3")
@@ -177,6 +180,8 @@ class DetailDialog:
         latitud = loc.get("latitud")
         longitud = loc.get("longitud")
         nombre = loc.get("nombre", "")
+        provincia = loc.get("provincia", "")
+        poblacion = loc.get("poblacion")
 
         # Verificar que las coordenadas existan y sean válidas
         if latitud is None or latitud == 0 or longitud is None or longitud == 0:
@@ -201,6 +206,9 @@ class DetailDialog:
             map_center = dict(lat=40.5, lon=-3.7)
             map_zoom = 3.6
 
+        # Formatear población con punto como separador de miles
+        poblacion_str = f"{poblacion:,.0f}".replace(",", ".") if poblacion else "N/A"
+
         with ui.card().classes("w-full mb-4"):
             ui.label("Ubicación").classes("text-h6 font-medium mb-3")
 
@@ -211,11 +219,17 @@ class DetailDialog:
                     lat=[latitud],
                     lon=[longitud],
                     mode="markers+text",
-                    marker=dict(size=12, color="red", symbol="star"),
+                    marker=dict(size=10, color="blue", symbol="circle"),
                     text=[nombre],
                     textposition="top center",
+                    textfont=dict(size=10, family="Arial"),
                     hoverinfo="text",
-                    hovertext=f"{nombre}<br>Lat: {latitud:.4f}<br>Lon: {longitud:.4f}",
+                    hovertext=f"<b>{nombre}</b><br>{provincia}<br>Población: {poblacion_str}",
+                    hoverlabel=dict(
+                        bgcolor="rgba(173, 216, 230, 0.9)",  # Azul claro con transparencia
+                        font_size=12,
+                        font_family="Arial",
+                    ),
                 )
             )
 
@@ -247,16 +261,17 @@ class DetailDialog:
         # Recopilar todos los servicios de transporte
         servicios = []
 
-        if trans.get("tiene_ave") or trans.get("tiene_larga_media_distancia"):
-            servicios.append("AVE/Media Distancia")
-        if trans.get("tiene_cercanias"):
-            servicios.append("Cercanías")
-        if trans.get("tiene_regional"):
-            servicios.append("Regional")
+        # Orden: Aeropuerto primero, luego AVE/Media Distancia, luego Regional
         if trans.get("tiene_aeropuerto"):
             servicios.append("Aeropuerto")
+        if trans.get("tiene_ave") or trans.get("tiene_larga_media_distancia"):
+            servicios.append("AVE/Media Distancia")
+        if trans.get("tiene_regional"):
+            servicios.append("Regional")
+        if trans.get("tiene_cercanias"):
+            servicios.append("Cercanías")
 
-        # Transporte urbano
+        # Transporte urbano - color naranja (amber-8)
         if trans_urbano.get("tiene_metro"):
             servicios.append("Metro")
         if trans_urbano.get("tiene_autobus_municipal"):
@@ -276,8 +291,8 @@ class DetailDialog:
             with ui.row().classes("gap-2 flex-wrap"):
                 for svc in servicios:
                     color = "primary"
-                    # Metro, Autobús y Tranvía usan color diferente (transporte urbano)
-                    if svc in ("Metro", "Autobús municipal", "Tranvía"):
+                    # Metro, Autobús, Tranvía y Cercanías usan color diferente (transporte urbano)
+                    if svc in ("Metro", "Autobús municipal", "Tranvía", "Cercanías"):
                         color = "amber-8"
 
                     # Crear badge clickeable para transporte urbano
@@ -287,6 +302,9 @@ class DetailDialog:
                         ui.badge(svc, color=color).props("outline").on('click', lambda e, lid=localidad_id: self._show_autobus_detail(lid))
                     elif svc == "Tranvía" and localidad_id:
                         ui.badge(svc, color=color).props("outline").on('click', lambda e, lid=localidad_id: self._show_tranvia_detail(lid))
+                    elif svc in ("Aeropuerto", "AVE/Media Distancia", "Regional", "Cercanías"):
+                        # Sin ventana de detalles para estos
+                        ui.badge(svc, color=color).props("outline")
                     else:
                         ui.badge(svc, color=color).props("outline")
 
@@ -450,31 +468,31 @@ class DetailDialog:
 
         # Función para color de temperatura
         def get_temp_color(local_val, national_val):
-            if local_val is None or national_val is None:
+            if local_val is None or national_val is None or national_val == 0:
                 return None
-            diff = local_val - national_val
-            if diff >= 5:
-                return "red-7"  # Mucho más cálido
-            elif diff <= -5:
-                return "blue-7"  # Mucho más frío
-            else:
-                return "green-7"  # Dentro de ±4.9°C
+            if local_val > national_val * 1.10:
+                return "red-9"  # >10% más cálido → rojo
+            elif local_val > national_val * 1.05:
+                return "orange-7"  # 5-10% más cálido → naranja
+            elif local_val < national_val * 0.90:
+                return "blue-9"  # <10% más frío → azul marino
+            elif local_val < national_val * 0.95:
+                return "light-blue-5"  # 5-10% más frío → azul celeste
+            return None  # Dentro de ±5% → sin color
 
-        # Función para color de precipitaciones
+        # Función para color de precipitaciones (>25% mayor → azul, >15% mayor → cyan, >15% menor → naranja, >25% menor → rojo)
         def get_precipit_color(local_val, national_val):
             if local_val is None or national_val is None or national_val == 0:
                 return None
-            ratio = local_val / national_val
-            if ratio > 1.25:
-                return "blue-7"  # >25% más lluvias
-            elif ratio > 1.10:
-                return "cyan-4"  # 10-25% más lluvias
-            elif ratio < 0.75:
-                return "red-7"  # >25% menos lluvias
-            elif ratio < 0.90:
-                return "orange-7"  # 10-25% menos lluvias
-            else:
-                return "green-7"  # Dentro de ±10%
+            if local_val > national_val * 1.25:
+                return "blue-7"  # >25% más lluvias → azul
+            elif local_val > national_val * 1.15:
+                return "cyan-5"  # 15-25% más lluvias → cyan
+            elif local_val < national_val * 0.75:
+                return "red-7"  # >25% menos lluvias → rojo
+            elif local_val < national_val * 0.85:
+                return "orange-7"  # 15-25% menos lluvias → naranja
+            return None  # Dentro de ±15% → sin color
 
         temp_color = get_temp_color(temp_med, temp_nac)
         precipit_color = get_precipit_color(precipit, precipit_nac)
@@ -485,8 +503,13 @@ class DetailDialog:
                 ui.label("Clima").classes("text-h6 font-medium")
 
             with ui.grid(columns=3).classes("w-full gap-3"):
+                # Temperatura
                 self._add_info_item("Temp. media", f"{temp_med:.1f}°C" if temp_med is not None else "N/A", color=temp_color)
+                
+                # Precipitaciones
                 self._add_info_item("Precipit. media", f"{precipit:.0f}mm" if precipit is not None else "N/A", color=precipit_color)
+                
+                # Viento
                 self._add_info_item("Viento medio", f"{viento:.1f}km/h" if viento is not None else "N/A", color=viento_color)
 
     def _build_paro_section(self, datos: dict):
@@ -497,9 +520,9 @@ class DetailDialog:
         if not paro:
             return
 
-        # Obtener media nacional
+        # Obtener tasa nacional de datos_nacionales
         medias = datos.get("medias_nacionales", {})
-        tasa_nacional = medias.get("tasa_paro_media", None)
+        tasa_nacional = medias.get("TASA_PARO_NACIONAL", None)
 
         tasa_local = paro.get("tasa_desempleo", None)
         evolucion = paro.get("variacion_desempleo", None)
@@ -510,24 +533,29 @@ class DetailDialog:
                 ui.label("Paro").classes("text-h6 font-medium")
 
             with ui.grid(columns=2).classes("w-full gap-3"):
-                # Color basado en helper compare_to_national
-                from app.utils.visuals import compare_to_national
-
-                color = compare_to_national(
-                    tasa_local, tasa_nacional, better_when_higher=False, thresholds=(0.9, 1.1)
-                )
+                # Tasa de desempleo: rojo si > media nacional, verde si < media nacional
+                if tasa_local is not None and tasa_nacional is not None and tasa_nacional > 0:
+                    color = "red-7" if tasa_local > tasa_nacional else "green-7"
+                else:
+                    color = None
 
                 self._add_info_item(
                     "Tasa desempleo",
                     f"{tasa_local:.1f}%" if tasa_local is not None else "N/A",
                     color=color,
                 )
+                
+                # Evolución trimestral: verde si negativo (descendió paro), rojo si positivo (aumentó paro)
+                if evolucion is not None:
+                    evolucion_color = "green-7" if evolucion < 0 else "red-7" if evolucion > 0 else None
+                else:
+                    evolucion_color = None
+                    
                 self._add_info_item(
-                    "Evolución trim.", f"{evolucion:+.1f}%" if evolucion is not None else "N/A"
+                    "Evolución trim.", 
+                    f"{evolucion:+.1f}%" if evolucion is not None else "N/A",
+                    color=evolucion_color
                 )
-
-                if tasa_nacional is not None:
-                    self._add_info_item("Media nac.", f"{tasa_nacional:.1f}%")
 
     def _build_renta_section(self, datos: dict):
         """Construye la sección de renta."""
@@ -537,13 +565,36 @@ class DetailDialog:
         if not renta:
             return
 
-        # Obtener media nacional
+        # Obtener medias nacionales
         medias = datos.get("medias_nacionales", {})
-        renta_nacional = medias.get("renta_bruta_media", 0)
+        renta_bruta_nacional = medias.get("Renta bruta media por persona", None)
+        renta_neta_nacional = medias.get("Renta neta media por persona", None)
 
         bruta = renta.get("renta_bruta_media", 0)
         neta = renta.get("renta_neta_media", 0)
         var_bruta = renta.get("variacion_renta_bruta", 0)
+
+        # Función para calcular color con 4 niveles
+        def get_renta_color(local_val, national_val):
+            """
+            Rojo si > nacional + 5%
+            Naranja si > nacional hasta 5%
+            Verde si < nacional hasta 5%
+            Verde oscuro si < nacional - 5%
+            """
+            if local_val is None or national_val is None or national_val == 0:
+                return None
+            
+            ratio = local_val / national_val
+            
+            if ratio > 1.05:
+                return "red-7"  # Más del 5% por encima
+            elif ratio > 1.0:
+                return "orange-7"  # Entre 0% y 5% por encima
+            elif ratio >= 0.95:
+                return "green-7"  # Entre 0% y 5% por debajo
+            else:
+                return "green-9"  # Más del 5% por debajo
 
         with ui.card().classes("w-full mb-4"):
             with ui.row().classes("items-center gap-2"):
@@ -551,21 +602,37 @@ class DetailDialog:
                 ui.label("Renta").classes("text-h6 font-medium")
 
             with ui.grid(columns=2).classes("w-full gap-3"):
-                # Color basado en helper compare_to_national (renta: más es mejor)
-                from app.utils.visuals import compare_to_national
-
-                color = compare_to_national(
-                    bruta, renta_nacional, better_when_higher=True, thresholds=(0.9, 1.1)
-                )
-
+                # Renta bruta con color de 4 niveles
+                bruta_color = get_renta_color(bruta, renta_bruta_nacional)
                 self._add_info_item(
-                    "Renta bruta", f"{bruta:,.0f}€" if bruta is not None else "N/A", color=color
+                    "Renta bruta", 
+                    f"{bruta:,.0f}€" if bruta is not None else "N/A", 
+                    color=bruta_color
                 )
-                self._add_info_item("Renta neta", f"{neta:,.0f}€" if neta is not None else "N/A")
-                self._add_info_item("Var. brut.", f"{var_bruta:+.1f}%" if var_bruta is not None else "N/A")
+                
+                # Renta neta con color de 4 niveles
+                neta_color = get_renta_color(neta, renta_neta_nacional)
+                self._add_info_item(
+                    "Renta neta", 
+                    f"{neta:,.0f}€" if neta is not None else "N/A",
+                    color=neta_color
+                )
+                
+                # Variación renta bruta: verde si positivo, rojo si negativo
+                if var_bruta is not None:
+                    var_color = "green-7" if var_bruta > 0 else "red-7" if var_bruta < 0 else None
+                else:
+                    var_color = None
+                    
+                self._add_info_item(
+                    "Var. brut.", 
+                    f"{var_bruta:+.1f}%" if var_bruta is not None else "N/A",
+                    color=var_color
+                )
 
-                if renta_nacional is not None:
-                    self._add_info_item("Media nac.", f"{renta_nacional:,.0f}€")
+                # Media Nacional: mostrar valor de renta neta nacional
+                if renta_neta_nacional is not None:
+                    self._add_info_item("Media nac.", f"{renta_neta_nacional:,.0f}€")
 
     def _build_delincuencia_section(self, datos: dict):
         """Construye la sección de delitos."""
@@ -575,12 +642,13 @@ class DetailDialog:
         if not delitos:
             return
 
-        # Obtener media nacional
+        # Obtener tasas nacionales de datos_nacionales
         medias = datos.get("medias_nacionales", {})
-        tasa_nacional = medias.get("tasa_criminalidad_media", 0)
+        tasa_criminalidad_nacional = medias.get("TASA_CRIMINALIDAD_NACIONAL", None)
+        tasa_robos_nacional = medias.get("TASA_ROBOS_NACIONAL", None)
 
         tasa_local = delitos.get("tasa_criminalidad_convencional", 0)
-        total = delitos.get("numero_criminalidad_convencional", 0)
+        tasa_robos = delitos.get("tasa_robos_violencia", 0)
 
         with ui.card().classes("w-full mb-4"):
             with ui.row().classes("items-center gap-2"):
@@ -588,39 +656,66 @@ class DetailDialog:
                 ui.label("Seguridad").classes("text-h6 font-medium")
 
             with ui.grid(columns=2).classes("w-full gap-3"):
-                # Color basado en helper compare_to_national (delincuencia: menos es mejor)
-                from app.utils.visuals import compare_to_national
-
-                color = compare_to_national(
-                    tasa_local, tasa_nacional, better_when_higher=False, thresholds=(0.8, 1.2), tokens=("positive", "warning", "negative")
-                )
+                # Tasa criminalidad: rojo si > media nacional, verde si < media nacional
+                if tasa_local is not None and tasa_criminalidad_nacional is not None and tasa_criminalidad_nacional > 0:
+                    tasa_color = "red-7" if tasa_local > tasa_criminalidad_nacional else "green-7"
+                else:
+                    tasa_color = None
 
                 self._add_info_item(
-                    "Tasa crimes", f"{tasa_local:.1f}" if tasa_local is not None else "N/A", color=color
+                    "Tasa criminalidad", 
+                    f"{tasa_local:.1f}" if tasa_local is not None else "N/A", 
+                    color=tasa_color
                 )
-                self._add_info_item("Total crimes", str(total) if total else "N/A")
-
-                if tasa_nacional is not None:
-                    self._add_info_item("Media nac.", f"{tasa_nacional:.1f}")
+                
+                # Tasa Robos: rojo si > media nacional, verde si < media nacional
+                if tasa_robos is not None and tasa_robos_nacional is not None and tasa_robos_nacional > 0:
+                    robos_color = "red-7" if tasa_robos > tasa_robos_nacional else "green-7"
+                else:
+                    robos_color = None
+                    
+                self._add_info_item(
+                    "Tasa Robos", 
+                    f"{tasa_robos:.1f}" if tasa_robos is not None else "N/A",
+                    color=robos_color
+                )
 
     def _build_sanidad_section(self, datos: dict, localidad_id: int):
-        """Construye la sección de sanidad/hospitales."""
-        hosp = datos.get("hospitales", {})
+        """Construye la sección de sanidad (hospitales y centros de salud)."""
+        hosp = datos.get("sanidad", {})
 
-        if not hosp or hosp.get("num_hospitales_total", 0) == 0:
+        if not hosp:
             return
 
-        total = hosp.get("num_hospitales_total", 0)
+        num_hospitales = hosp.get("num_hospitales_total", 0)
+        num_centros_salud = hosp.get("num_centros_salud", 0)
 
         with ui.card().classes("w-full mb-4"):
             ui.label("Sanidad").classes("text-h6 font-medium mb-3")
-            with ui.row().classes("gap-2 items-center"):
-                ui.label("Hospitales en la localidad: ").classes("text-body1")
-                ui.button(
-                    f"{total}",
-                    on_click=lambda: self._show_hospitales_detalles(localidad_id),
-                    icon="local_hospital",
-                ).props("flat color=primary")
+            with ui.row().classes("w-full gap-6"):
+                # Hospitales
+                with ui.column().classes("items-center"):
+                    ui.label("Hospitales").classes("text-body2")
+                    if num_hospitales > 0:
+                        ui.button(
+                            f"{num_hospitales}",
+                            on_click=lambda: self._show_hospitales_detalles(localidad_id),
+                            icon="local_hospital",
+                        ).props("flat color=primary")
+                    else:
+                        ui.label("0").classes("text-h6")
+                
+                # Centros de Salud
+                with ui.column().classes("items-center"):
+                    ui.label("Centros de Salud").classes("text-body2")
+                    if num_centros_salud > 0:
+                        ui.button(
+                            f"{num_centros_salud}",
+                            on_click=lambda: self._show_centros_salud_detalles(localidad_id),
+                            icon="local_hospital",
+                        ).props("flat color=primary")
+                    else:
+                        ui.label("0").classes("text-h6")
 
     def _show_hospitales_detalles(self, localidad_id: int):
         """Muestra el diálogo con detalles de hospitales."""
@@ -667,6 +762,46 @@ class DetailDialog:
 
         self._hospital_dialog._dialog.open()
 
+    def _show_centros_salud_detalles(self, localidad_id: int):
+        """Muestra el diálogo con detalles de centros de salud."""
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT nombre, tipo_centro, direccion, telefono, municipio, provincia
+            FROM centrossalud_detalle 
+            WHERE localidad_id = ?
+        """,
+            (localidad_id,),
+        )
+        centros = cursor.fetchall()
+        conn.close()
+
+        contenido = self._hospital_dialog._content
+        contenido.clear()
+
+        with contenido:
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("local_hospital")
+                ui.label("Centros de Salud de la Localidad").classes("text-h6 font-bold")
+
+            if not centros:
+                ui.label("No hay centros de salud registrados")
+            else:
+                for c in centros:
+                    with ui.card().classes("w-full mb-2 p-3"):
+                        ui.label(c["nombre"] or "Sin nombre").classes(
+                            "text-body1 font-medium"
+                        )
+                        if c["tipo_centro"]:
+                            ui.label(c["tipo_centro"]).classes("text-body2")
+                        if c["direccion"]:
+                            ui.label(c["direccion"]).classes("text-body2")
+                        if c["telefono"]:
+                            ui.label(f"Telf: {c['telefono']}").classes("text-body2 text-grey-7")
+
+        self._hospital_dialog._dialog.open()
+
     def _build_gastos_section(self, datos: dict):
         """Construye la sección de gastos."""
         gastos_list = datos.get("gastos", [])
@@ -704,17 +839,42 @@ class DetailDialog:
                     self._add_info_item(nombre, str(mensual) if mensual else "N/A")
 
     def _build_educacion_section(self, datos: dict, localidad_id: int):
-        """Construye la sección de educación (bibliotecas y universidades)."""
+        """Construye la sección de educación (bibliotecas, universidades e institutos)."""
         calidad = datos.get("calidad_ciudad", {})
-
+        loc = datos.get("localidad", {})
+        
         # Bibliotecas: nota_bibliotecas indica si hay bibliotecas
         nota_bibliotecas = calidad.get("nota_bibliotecas", 0)
 
-        # Mostrar siempre la sección de educación (aunque sea 0, se mostrará "0")
+        # Institutos: buscar en centroseducativos_detalle
+        codigo_ine = loc.get("codigo_ine")
+        num_institutos = 0
+        if codigo_ine:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM centroseducativos_detalle WHERE codigo_ine = ?",
+                (codigo_ine,),
+            )
+            num_institutos = cursor.fetchone()[0]
+            conn.close()
+
+        # Universidades: consultar directamente la tabla universidades_detalle
+        num_universidades = 0
+        if codigo_ine:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM universidades_detalle WHERE codigo_municipio_ine = ?",
+                (codigo_ine,),
+            )
+            num_universidades = cursor.fetchone()[0]
+            conn.close()
+
         with ui.card().classes("w-full mb-4"):
             ui.label("Educación").classes("text-h6 font-medium mb-3")
 
-            with ui.grid(columns=2).classes("w-full gap-4"):
+            with ui.grid(columns=3).classes("w-full gap-4"):
                 # Bibliotecas - clickeable si hay
                 if nota_bibliotecas > 0:
                     self._add_clickable_item(
@@ -726,23 +886,7 @@ class DetailDialog:
                 else:
                     self._add_info_item("Bibliotecas", "0")
 
-                # Universidades - siempre clickeable si hay datos
-                # Consultar directamente la tabla universidades_detalle
-                loc = datos.get("localidad", {})
-                codigo_ine = loc.get("codigo_ine")
-
-                conn = get_connection()
-                cursor = conn.cursor()
-                if codigo_ine:
-                    cursor.execute(
-                        "SELECT COUNT(*) FROM universidades_detalle WHERE codigo_municipio_ine = ?",
-                        (codigo_ine,),
-                    )
-                    num_universidades = cursor.fetchone()[0]
-                else:
-                    num_universidades = 0
-                conn.close()
-
+                # Universidades - clickeable si hay
                 if num_universidades > 0:
                     self._add_clickable_item(
                         "Universidades",
@@ -752,6 +896,17 @@ class DetailDialog:
                     )
                 else:
                     self._add_info_item("Universidades", "0")
+
+                # Institutos/Colegios - clickeable
+                if num_institutos > 0:
+                    self._add_clickable_item(
+                        "Institutos/Colegios",
+                        num_institutos,
+                        lambda: self._show_institutos_detalles(localidad_id),
+                        icon="school",
+                    )
+                else:
+                    self._add_info_item("Institutos/Colegios", "0")
 
     def _show_bibliotecas_detalles(self, localidad_id: int):
         """Muestra el diálogo con detalles de bibliotecas."""
@@ -868,6 +1023,46 @@ class DetailDialog:
                                     on_click=lambda e, uurl=url: ui.navigate.to(uurl, new_tab=True),
                                     icon="open_in_new",
                                 ).props("flat color=primary size=sm")
+
+            with ui.row().classes("mt-4 justify-end"):
+                ui.button("Cerrar", on_click=dialog.close).props("flat color=grey")
+
+        dialog.open()
+
+    def _show_institutos_detalles(self, localidad_id: int):
+        """Muestra el diálogo con detalles de centros educativos."""
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT nombre, denominacion_generica, naturaleza, domicilio, telefono, provincia
+            FROM centroseducativos_detalle 
+            WHERE localidad_id = ?
+            ORDER BY nombre
+        """,
+            (localidad_id,),
+        )
+        centros = cursor.fetchall()
+        conn.close()
+
+        with ui.dialog() as dialog, ui.card().classes("q-pa-md"):
+            with ui.row().classes("items-center gap-2"):
+                ui.icon("school")
+                ui.label("Institutos/Colegios de la Localidad").classes("text-h6 font-medium")
+
+            if not centros:
+                ui.label("No hay centros educativos registrados")
+            else:
+                with ui.column().classes("w-full gap-3 mt-3"):
+                    for c in centros:
+                        with ui.card().classes("w-full p-3"):
+                            ui.label(c["nombre"] or "Sin nombre").classes("text-body1 font-medium")
+                            if c["denominacion_generica"]:
+                                ui.label(c["denominacion_generica"]).classes("text-body2")
+                            if c["domicilio"]:
+                                ui.label(c["domicilio"]).classes("text-body2 text-grey-7")
+                            if c["telefono"]:
+                                ui.label(f"Telf: {c['telefono']}").classes("text-body2 text-grey-7")
 
             with ui.row().classes("mt-4 justify-end"):
                 ui.button("Cerrar", on_click=dialog.close).props("flat color=grey")
@@ -1073,13 +1268,20 @@ class DetailDialog:
 
     def build(self) -> ui.dialog:
         """Construye el componente UI del diálogo principal."""
-        with ui.dialog().props("width=900px") as self._dialog:
-            with ui.card():
-                with ui.column().classes("gap-4 w-full") as self._content:
+        # Diálogo responsivo: 90% en móvil, max 900px en PC
+        with ui.dialog().props("width=90vw, max-width=900px") as self._dialog:
+            with ui.card().classes("w-full").style("height: 85vh; display: flex; flex-direction: column;"):
+                # Cabecera fija (sticky header)
+                with ui.element("div").classes("w-full flex-shrink-0 q-pa-md border-b") as self._header:
+                    pass  # El header se llena en _build_header
+                
+                # Cuerpo con scroll
+                with ui.element("div").classes("w-full flex-grow overflow-y-auto q-pa-md") as self._content:
                     ui.spinner(size="lg")
                     ui.label("Cargando datos...")
-
-                with ui.card_actions().classes("justify-end"):
+                
+                # Pie fijo (sticky footer)
+                with ui.element("div").classes("w-full flex-shrink-0 q-pa-md text-center border-t"):
                     ui.button("Cerrar", on_click=self._dialog.close).props("color=grey")
 
         # Crear diálogos auxiliares para detalles
@@ -1089,11 +1291,12 @@ class DetailDialog:
         self._museos_dialog = self._create_mini_dialog("Museos")
         self._bibliotecas_dialog = self._create_mini_dialog("Bibliotecas")
         self._universidades_dialog = self._create_mini_dialog("Universidades")
+        self._institutos_dialog = self._create_mini_dialog("Institutos/Colegios")
 
         return self._dialog
 
     def _create_mini_dialog(self, title: str):
-        """Crea un diálogo para detalles."""
+        """Crea un diálogo para detalles (responsivo)."""
 
         class MiniDialog:
             def __init__(self):
@@ -1101,7 +1304,8 @@ class DetailDialog:
                 self._content = None
 
         mini = MiniDialog()
-        with ui.dialog().props("width=600px") as mini._dialog:
+        # Diálogo responsivo: 90% en móvil, max 600px en PC
+        with ui.dialog().props("width=90vw, max-width=600px") as mini._dialog:
             with ui.card().classes("q-pa-md"):
                 with ui.column().classes(
                     "gap-3"
