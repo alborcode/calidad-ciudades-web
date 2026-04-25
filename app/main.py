@@ -78,6 +78,10 @@ def main():
     # Añadir CSS responsivo
     ui.add_css(RESPONSIVE_CSS)
     
+    # Favicon: icono de ciudad (building) en SVG
+    favicon_svg = '''<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232196F3'><path d='M12 3L2 12h3v9h14v-9h3L12 3zm0 12.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>'''
+    ui.add_html(favicon_svg)
+    
     page = MainPage()
     page.build()
 
@@ -87,6 +91,7 @@ if __name__ in {"__main__", "__mp_main__"}:
     ui.run(
         title="Calidad de Ciudades",
         reload=True,
+        host='0.0.0.0',
         port=8080,
         storage_secret="calidad-ciudades-secret-2024",
     )
