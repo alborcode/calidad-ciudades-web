@@ -18,7 +18,6 @@ class FiltrosComponent:
         """
         self.on_filter_change = on_filter_change
         self.precio_alquiler: ui.Number = None
-        self.gasto_alimentacion: ui.Number = None
         self.tiene_cines: ui.Checkbox = None
         self.tiene_teatros: ui.Checkbox = None
         self.tiene_museos: ui.Checkbox = None
@@ -40,11 +39,9 @@ class FiltrosComponent:
     def get_filtro(self) -> CiudadFiltro:
         """Obtiene el filtro actual basado en los valores del UI."""
         precio = self.precio_alquiler.value
-        gasto = self.gasto_alimentacion.value
 
         return CiudadFiltro(
             precio_alquiler_max=precio if precio and precio > 0 else None,
-            gasto_alimentacion_max=gasto if gasto and gasto > 0 else None,
             tiene_cines=self.tiene_cines.value,
             tiene_teatros=self.tiene_teatros.value,
             tiene_museos=self.tiene_museos.value,
@@ -171,7 +168,6 @@ class FiltrosComponent:
     def clear_filters(self):
         """Limpia todos los filtros."""
         self.precio_alquiler.set_value(None)
-        self.gasto_alimentacion.set_value(None)
         self.tiene_cines.set_value(False)
         self.tiene_teatros.set_value(False)
         self.tiene_museos.set_value(False)
@@ -192,13 +188,6 @@ class FiltrosComponent:
                 self.precio_alquiler = ui.number(
                     label="Precio alquiler máximo (€/mes)",
                     placeholder="Ej: 800",
-                    min=0,
-                    step=10,
-                ).on_value_change(lambda: self._notify_change())
-
-                self.gasto_alimentacion = ui.number(
-                    label="Gasto alimentación máx. (€/mes)",
-                    placeholder="Ej: 300",
                     min=0,
                     step=10,
                 ).on_value_change(lambda: self._notify_change())

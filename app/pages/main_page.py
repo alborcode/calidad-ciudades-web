@@ -44,15 +44,15 @@ class MainPage:
                 "text-body1"
             )
 
-        # Contenido principal
-        with ui.row().classes("w-full gap-6"):
-            # Panel de filtros (izquierda)
-            with ui.column().classes("w-80"):
+        # Contenedor responsivo: row en PC, column en móvil
+        with ui.row().classes("w-full gap-6 responsive-container"):
+            # Panel de filtros (izquierda en PC, arriba en móvil)
+            with ui.column().classes("w-80 filters-panel"):
                 self.filtros = FiltrosComponent(on_filter_change=self.on_filter_change)
                 self.filtros.build()
 
-            # Panel de resultados (derecha)
-            with ui.column().classes("flex-grow gap-4"):
+            # Panel de resultados (derecha en PC, abajo en móvil)
+            with ui.column().classes("flex-grow results-panel gap-4"):
                 self._resultados_label = ui.label("0 ciudades encontradas").classes(
                     "text-body2 text-grey"
                 )

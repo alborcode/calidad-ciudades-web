@@ -17,12 +17,11 @@ def crear_circulo_puntuacion(
     """
     Crea un círculo HTML con la puntuación 1-100 y color según categoría.
 
-    Calcula categoría dinámicamente basada en puntuación 100 (nueva escala 28=100).
+    La puntuación ya viene calculada desde nota_final de la BD.
     """
     puntuacion_100 = calcular_puntuacion_100(puntuacion_raw)
 
-    # Calcular categoría basada en puntuación 100 (nueva escala 28=100)
-    # Esto asegura colores consistentes con el nuevo sistema
+    # Calcular categoría basada en puntuación 100
     categoria_calc = get_categoria_from_score(puntuacion_100)
     color = get_color_categoria(categoria_calc)
 

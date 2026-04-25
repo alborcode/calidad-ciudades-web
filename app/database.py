@@ -23,7 +23,6 @@ class CiudadFiltro:
     """Filtros para búsqueda de ciudades."""
 
     precio_alquiler_max: Optional[float] = None
-    gasto_alimentacion_max: Optional[float] = None
     tiene_cines: bool = False
     tiene_teatros: bool = False
     tiene_museos: bool = False
@@ -44,7 +43,6 @@ class CiudadResultado:
     puntuacion: Optional[int]
     categoria: Optional[str]
     precio_alquiler: Optional[float]
-    gasto_alimentacion: Optional[float]
 
 
 def get_connection() -> sqlite3.Connection:
@@ -68,14 +66,12 @@ def buscar_ciudades(filtro: CiudadFiltro) -> list[CiudadResultado]:
             l.nombre AS localidad,
             p.nombre_provincia AS provincia,
             c.nombre_comunidad AS comunidad,
-            cc.puntuacion,
+            cc.nota_final AS puntuacion,
             cc.categoria,
-            v.precio_alquiler,
-            g.gasto_mensual AS gasto_alimentacion
+            v.precio_alquiler
         FROM localidades l
         LEFT JOIN calidad_ciudad cc ON l.id = cc.localidad_id
         LEFT JOIN vivienda v ON l.id = v.localidad_id
-        LEFT JOIN gastos g ON l.id = g.localidad_id AND g.codigo_gasto = '01'
         LEFT JOIN param_provincias p ON l.codigo_provincia = p.codigo_provincia
         LEFT JOIN param_comunidades c ON p.codigo_comunidad = c.codigo_comunidad
         WHERE 1=1
@@ -87,11 +83,6 @@ def buscar_ciudades(filtro: CiudadFiltro) -> list[CiudadResultado]:
     if filtro.precio_alquiler_max is not None:
         query += " AND v.precio_alquiler <= ?"
         params.append(filtro.precio_alquiler_max)
-
-    # Filtro gasto alimentación
-    if filtro.gasto_alimentacion_max is not None:
-        query += " AND g.gasto_mensual <= ?"
-        params.append(filtro.gasto_alimentacion_max)
 
     # Filtros booleanos (solo aplicar si están marcados)
     if filtro.tiene_cines:
@@ -114,7 +105,7 @@ def buscar_ciudades(filtro: CiudadFiltro) -> list[CiudadResultado]:
         )"""
 
     if filtro.tiene_hospital:
-        query += " AND EXISTS (SELECT 1 FROM hospitales h WHERE h.localidad_id = l.id AND h.num_hospitales_total > 0)"
+        query += " AND EXISTS (SELECT 1 FROM sanidad s WHERE s.localidad_id = l.id AND s.num_hospitales_total > 0)"
 
     if filtro.tiene_universidad:
         query += " AND EXISTS (SELECT 1 FROM calidad_ciudad cc3 WHERE cc3.localidad_id = l.id AND cc3.nota_universidad > 0)"
@@ -134,7 +125,6 @@ def buscar_ciudades(filtro: CiudadFiltro) -> list[CiudadResultado]:
             puntuacion=row["puntuacion"],
             categoria=row["categoria"],
             precio_alquiler=row["precio_alquiler"],
-            gasto_alimentacion=row["gasto_alimentacion"],
         )
         for row in rows
     ]
@@ -164,13 +154,10 @@ def get_datos_localidad(localidad_id: int) -> dict[str, Any]:
     if row:
         datos["vivienda"] = dict(row)
 
-    cursor.execute("SELECT * FROM gastos WHERE localidad_id = ?", (localidad_id,))
-    datos["gastos"] = [dict(row) for row in cursor.fetchall()]
-
-    cursor.execute("SELECT * FROM hospitales WHERE localidad_id = ?", (localidad_id,))
+    cursor.execute("SELECT * FROM sanidad WHERE localidad_id = ?", (localidad_id,))
     row = cursor.fetchone()
     if row:
-        datos["hospitales"] = dict(row)
+        datos["sanidad"] = dict(row)
 
     cursor.execute("SELECT * FROM transporte WHERE localidad_id = ?", (localidad_id,))
     row = cursor.fetchone()
@@ -296,30 +283,16 @@ def get_datos_comparativos(localidad_id: int) -> dict[str, Any]:
 
 def calcular_puntuacion_100(puntuacion_raw: Optional[int]) -> int:
     """
-    Transforma la puntuación raw (rango SCORE_MIN .. SCORE_MAX) a escala 0-100.
-
-    Fórmula lineal:
-        nota = ((puntuacion_raw - SCORE_MIN) / (SCORE_MAX - SCORE_MIN)) * 100
-
+    Retorna la puntuación 0-100 directamente desde nota_final de la BD.
+    
     - Si puntuacion_raw es None -> devuelve 0
-    - Se clampa entre 0 y 100 y se redondea a entero
-
-    Ejemplos (con SCORE_MIN=-9, SCORE_MAX=33, rango=42):
-        -9  -> 0
-        33  -> 100
-        12  -> 50
-        21  -> ~71
+    - El valor ya viene en escala 0-100, solo se clama por seguridad
     """
     if puntuacion_raw is None:
         return 0
-
-    score_range = SCORE_MAX - SCORE_MIN
-    if score_range <= 0:
-        # Protección contra división por cero (valores mal configurados)
-        return 0
-
-    puntuacion_100 = ((puntuacion_raw - SCORE_MIN) / score_range) * 100
-    return int(max(0, min(100, round(puntuacion_100))))
+    
+    # Clamp entre 0 y 100 por seguridad
+    return int(max(0, min(100, puntuacion_raw)))
 
 
 def get_categoria_from_score(puntuacion_100: int) -> str:
