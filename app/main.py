@@ -78,25 +78,20 @@ def main():
     # Añadir CSS responsivo
     ui.add_css(RESPONSIVE_CSS)
     
-    # Favicon: icono de ciudad (building) en SVG
-    ui.query('head').execute_js('''
-        var link = document.createElement("link");
-        link.rel = "icon";
-        link.type = "image/svg+xml";
-        link.href = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232196F3'%3E%3Cpath d='M12 3L2 12h3v9h14v-9h3L12 3zm0 12.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/%3E%3C/svg%3E";
-        document.head.appendChild(link);
-    ''')
-    
     page = MainPage()
     page.build()
 
 
 # Entry point directo
 if __name__ in {"__main__", "__mp_main__"}:
+    # Favicon SVG como data URI
+    favicon_data = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232196F3'%3E%3Cpath d='M12 3L2 12h3v9h14v-9h3L12 3zm0 12.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/%3E%3C/svg%3E"
+    
     ui.run(
         title="Calidad de Ciudades",
         reload=True,
         host='0.0.0.0',
         port=8080,
         storage_secret="calidad-ciudades-secret-2024",
+        favicon=favicon_data,
     )
