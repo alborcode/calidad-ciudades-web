@@ -79,8 +79,13 @@ def main():
     ui.add_css(RESPONSIVE_CSS)
     
     # Favicon: icono de ciudad (building) en SVG
-    favicon_svg = '''<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232196F3'><path d='M12 3L2 12h3v9h14v-9h3L12 3zm0 12.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>'''
-    ui.add_html(favicon_svg)
+    ui.query('head').execute_js('''
+        var link = document.createElement("link");
+        link.rel = "icon";
+        link.type = "image/svg+xml";
+        link.href = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232196F3'%3E%3Cpath d='M12 3L2 12h3v9h14v-9h3L12 3zm0 12.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/%3E%3C/svg%3E";
+        document.head.appendChild(link);
+    ''')
     
     page = MainPage()
     page.build()
